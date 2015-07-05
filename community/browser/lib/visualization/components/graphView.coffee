@@ -48,8 +48,8 @@ class neo.graphView
     @viz.update()
     @
 
-  resize: ->
-    @viz.resize()
+  resize: (params) ->
+    @viz.resize(params)
     @
 
   boundingBox: ->

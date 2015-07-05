@@ -67,7 +67,8 @@ angular.module('neo4jApp.controllers')
         graphView.update()
         selectItem(selectedItem)
 
-      $rootScope.$on 'layout.changed', (-> graphView?.resize())
+      $rootScope.$on 'layout.changed', ( (e, params )->
+        graphView?.resize(params))
 
       $scope.$watch 'displayInternalRelationships', (displayInternalRelationships) ->
         $rootScope.stickyDisplayInternalRelationships = displayInternalRelationships

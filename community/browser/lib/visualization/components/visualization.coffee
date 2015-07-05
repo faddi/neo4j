@@ -67,9 +67,9 @@ neo.viz = (el, measureSize, graph, layout, style) ->
 
   panned = ->
     panning = yes
-    container.attr("transform", "translate(" + d3.event.translate + ")scale(1)")
+    container.attr("transform", "translate(" + d3.event.translate + ")scale(" + d3.event.scale + ")")
 
-  zoomBehavior = d3.behavior.zoom().on("zoom", panned)
+  zoomBehavior = d3.behavior.zoom().scaleExtent([0.1, 3]).on("zoom", panned);
 
   # Background click event
   # Check if panning is ongoing
@@ -77,13 +77,31 @@ neo.viz = (el, measureSize, graph, layout, style) ->
     if not panning then viz.trigger('canvasClicked', el)
   )
 
+  # keeping track of fullscreen state
+  fullscreen = no
+
   base_group.call(zoomBehavior)
       .on("dblclick.zoom", null)
       #Single click is not panning
       .on("click.zoom", -> panning = no)
-      .on("DOMMouseScroll.zoom", null)
-      .on("wheel.zoom", null)
-      .on("mousewheel.zoom", null)
+
+  zoomEvents = ["DOMMouseScroll.zoom", "wheel.zoom", "mousewheel.zoom"];
+  zoomHandlers = [];
+  zoomEvents.map (n) -> zoomHandlers.push(base_group.on(n))
+
+  onFullscreenStateChange = ->
+    if fullscreen
+      enableZoom()
+    else
+      disableZoom()
+
+  disableZoom = ->
+    zoomEvents.map (ev) -> base_group.on(ev, null)
+  enableZoom = ->
+    zoomEvents.map (ev, index) -> base_group.on(ev, zoomHandlers[index])
+
+  #initial state
+  onFullscreenStateChange()
 
   newStatsBucket = ->
     bucket =
@@ -206,7 +224,7 @@ neo.viz = (el, measureSize, graph, layout, style) ->
 
     nodeGroups
     .classed("selected", (node) -> node.selected)
-  
+
     for renderer in neo.renderers.node
       nodeGroups.call(renderer.onGraphChange, viz);
 
@@ -217,11 +235,15 @@ neo.viz = (el, measureSize, graph, layout, style) ->
     viz.resize()
     viz.trigger('updated')
 
-  viz.resize = ->
+  viz.resize = (params) ->
     size = measureSize()
     root.attr('viewBox', [
       0, (layoutDimension - size.height) / 2, layoutDimension, size.height
     ].join(' '))
+
+    if params?.fullscreen? and fullscreen != params.fullscreen
+      fullscreen = params.fullscreen
+      onFullscreenStateChange()
 
   viz.boundingBox = ->
     container.node().getBBox()
